@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-﻿from fastapi import FastAPI
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"message": "FastAPI is running!"}
-=======
-# main.py
 from fastapi import FastAPI, HTTPException
 import logging
 import operations
 
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -50,4 +42,3 @@ def divide(a: float, b: float):
     except ValueError as e:
         logging.error("Division by zero attempted")
         raise HTTPException(status_code=400, detail=str(e))
->>>>>>> b13569bf79b96dbc2493284b4ae61c3f488c7534
