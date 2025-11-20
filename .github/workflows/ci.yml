@@ -10,7 +10,6 @@ jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
-    # Postgres service for integration tests (as required by the assignment)
     services:
       db:
         image: postgres:16
@@ -63,4 +62,4 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
+            vigneshvarma05/fastapi-calculator:latest
