@@ -1,11 +1,10 @@
 fastapi
 uvicorn[standard]
-
-SQLAlchemy
+sqlalchemy
 psycopg2-binary
 
-pydantic[email]     # pulls in email-validator
-passlib[bcrypt]     # password hashing
+pydantic[email]    # this pulls in email-validator
+passlib            # for password hashing (we use pbkdf2_sha256)
 
 pytest
 pytest-cov
