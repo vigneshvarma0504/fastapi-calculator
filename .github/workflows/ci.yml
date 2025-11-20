@@ -55,14 +55,18 @@ jobs:
 
       - name: Build Docker image
         if: success()
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
         run: |
-          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
+          echo "Building image $IMAGE_NAME"
           docker build -t $IMAGE_NAME:${{ github.sha }} .
           docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
 
       - name: Push Docker image
         if: success()
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
         run: |
-          IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
+          echo "Pushing image $IMAGE_NAME"
           docker push $IMAGE_NAME:${{ github.sha }}
           docker push $IMAGE_NAME:latest
