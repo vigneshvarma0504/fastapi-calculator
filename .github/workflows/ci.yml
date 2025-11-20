@@ -1,4 +1,4 @@
-name: CI - Tests and Docker Deploy
+name: test-and-deploy
 
 on:
   push:
@@ -53,20 +53,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         if: success()
-        env:
-          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
-        run: |
-          echo "Building image $IMAGE_NAME"
-          docker build -t $IMAGE_NAME:${{ github.sha }} .
-          docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
-
-      - name: Push Docker image
-        if: success()
-        env:
-          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator
-        run: |
-          echo "Pushing image $IMAGE_NAME"
-          docker push $IMAGE_NAME:${{ github.sha }}
-          docker push $IMAGE_NAME:latest
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:${{ github.sha }}
