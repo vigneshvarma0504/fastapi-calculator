@@ -62,6 +62,8 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          # Use the repository owner/name (github.repository) for tags to avoid
+          # an empty-secret producing a leading slash in the tag ("/repo:tag").
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
+            ${{ github.repository }}:${{ github.sha }}
+            ${{ github.repository }}:latest
