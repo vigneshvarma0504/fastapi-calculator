@@ -2,16 +2,17 @@ name: CI - Tests and Docker Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
-    # PostgreSQL service for integration tests
     services:
       db:
         image: postgres:16
@@ -48,8 +49,7 @@ jobs:
         run: |
           pytest --cov=app --cov-report=term-missing
 
-      # Log in to Docker Hub only on protected main branch,
-      # and only if secrets are configured.
+      # Docker build + push only on main, only if secrets exist
       - name: Log in to Docker Hub
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         uses: docker/login-action@v3
@@ -58,9 +58,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and (optionally) push Docker image
+      - name: Build and push Docker image
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         uses: docker/build-push-action@v4
         with:
@@ -69,3 +70,4 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:${{ github.sha }}
