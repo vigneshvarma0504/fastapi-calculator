@@ -4,12 +4,14 @@ on:
   push:
     branches: ["main"]
   pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
+    # PostgreSQL service for integration tests
     services:
       db:
         image: postgres:16
@@ -40,33 +42,30 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov
 
-      - name: Run tests
+      - name: Run tests (Postgres via TEST_DATABASE_URL)
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/calculator_db
         run: |
           pytest --cov=app --cov-report=term-missing
 
+      # Log in to Docker Hub only on protected main branch,
+      # and only if secrets are configured.
+      - name: Log in to Docker Hub
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Debug: show build context and tags
-        run: |
-          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
-          echo "GITHUB_SHA=$GITHUB_SHA"
-          echo "Will build tags: $GITHUB_REPOSITORY:$GITHUB_SHA and $GITHUB_REPOSITORY:latest"
-
-      - name: Build Docker image (no push)
+      - name: Build and (optionally) push Docker image
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Dockerfile
-          push: false
-          platforms: linux/amd64,linux/arm64
+          push: true
           tags: |
-            ${{ github.repository }}:${{ github.sha }}
-            ${{ github.repository }}:latest
-
-      # We intentionally do not log in or push to Docker Hub here to avoid
-      # CI failures caused by missing/invalid Docker Hub credentials. The
-      # build step above produces the image artifacts in the Actions runner
-      # (and writes metadata), which is sufficient for CI verification.
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
