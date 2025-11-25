@@ -51,9 +51,9 @@ jobs:
 
       - name: Debug: show build context and tags
         run: |
-          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
-          echo "REPO_NAME=${{ github.event.repository.name }}"
-          echo "Will build tags: ${{ github.repository }}:${{ github.sha }} and ${{ github.repository }}:latest"
+          echo "GITHUB_REPOSITORY=$GITHUB_REPOSITORY"
+          echo "GITHUB_SHA=$GITHUB_SHA"
+          echo "Will build tags: $GITHUB_REPOSITORY:$GITHUB_SHA and $GITHUB_REPOSITORY:latest"
 
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v4
