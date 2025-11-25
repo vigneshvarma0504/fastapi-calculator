@@ -1,10 +1,10 @@
-name: test-and-deploy
+name: CI - Tests and Docker Deploy
 
 on:
   push:
     branches: ["main"]
   pull_request:
-    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   test-and-deploy:
@@ -56,10 +56,12 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
-            vigneshvarma05/fastapi-calculator:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
