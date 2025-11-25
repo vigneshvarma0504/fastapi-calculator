@@ -66,27 +66,7 @@ jobs:
             ${{ github.repository }}:${{ github.sha }}
             ${{ github.repository }}:latest
 
-      - name: Push Docker image (only if Docker Hub secrets present)
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: echo "Preparing to push image as $DOCKERHUB_USERNAME/${{ github.event.repository.name }}"
-
-      - name: Log in to Docker Hub (conditional)
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image (conditional)
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
+      # We intentionally do not log in or push to Docker Hub here to avoid
+      # CI failures caused by missing/invalid Docker Hub credentials. The
+      # build step above produces the image artifacts in the Actions runner
+      # (and writes metadata), which is sufficient for CI verification.
