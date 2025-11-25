@@ -36,52 +36,91 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open: http://127.0.0.1:8000/docs
+## FastAPI Calculator – Module 10
 
-### 2. With Docker Compose (Postgres)
+This repository is a small FastAPI application used for Module 10 exercises. It demonstrates:
 
-```bash
-docker compose up --build
+- SQLAlchemy models and migrations (simple declarative models)
+- Pydantic v2 schemas and validation
+- A small operation factory for calculator operations
+- Unit and integration tests (pytest)
+- A GitHub Actions workflow to run tests and build a Docker image
+
+This module focused on modeling and validation — creating a `Calculation` model
+and robust Pydantic schemas. API endpoints (BREAD) will be added in Module 12.
+
+## What I added in Module 10
+
+- Calculation model: `app.models.Calculation` (fields: `id`, `a`, `b`, `type`, `result`, `created_at`).
+- Pydantic schemas: `app.schemas.CalculationCreate` and `CalculationRead` (includes a model validator preventing division by zero).
+- Operation factory: `app.operations.OperationType` enum and `compute_result(a, b, op)` function.
+- Tests:
+  - `tests/test_calculations.py` unit tests for the factory and schema validation.
+  - `tests/integration/test_calculations_integration.py` integration test that inserts a `Calculation` record.
+
+## Run the project locally
+
+1. Create and activate a Python virtual environment (recommended).
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-This starts:
-- `db` – Postgres
-- `web` – FastAPI app at http://localhost:8000
+2. Start the app (uses the default SQLite DB for local dev):
 
-## Running Tests Locally
+```powershell
+uvicorn app.main:app --reload
+```
 
-By default integration tests use `sqlite:///./test_integration.db`.
+Open http://127.0.0.1:8000/docs to explore the API.
 
-```bash
+## Run tests locally
+
+Run all tests with coverage:
+
+```powershell
 pytest --cov=app --cov-report=term-missing
 ```
 
-To run tests against a Postgres database:
+Run just the calculation tests:
 
-```bash
-export TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/calculator_db
-pytest
+```powershell
+pytest tests/test_calculations.py tests/integration/test_calculations_integration.py -q
 ```
 
-## CI/CD Pipeline (GitHub Actions → Docker Hub)
+Integration tests use `TEST_DATABASE_URL` if provided; otherwise a local SQLite file is used by default.
 
-- Workflow file: `.github/workflows/ci.yml`
-- Uses a Postgres service container for integration tests.
-- On successful tests:
-  - Builds a Docker image.
-  - Tags and pushes to Docker Hub as:
+## CI / GitHub Actions
 
-    ```text
-    ${{ secrets.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
-    ```
+Workflow: `.github/workflows/ci.yml`
 
-### Required GitHub Secrets
+- Runs pytest (unit + integration) using a Postgres service in Actions.
+- Builds the Docker image in CI but only pushes if `DOCKERHUB_USERNAME` and
+  `DOCKERHUB_TOKEN` secrets are configured — this avoids failing CI when
+  credentials are missing. The workflow includes a debug step that prints the
+  repository and tags used for the build.
 
-- `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN` (Docker Hub access token)
+### To enable pushing from CI
 
-## Reflection
+1. Create a Docker Hub repository under your Docker Hub account (for example: `vigneshvarma05/fastapi-calculator`).
+2. In GitHub repository settings -> Secrets -> Actions add:
+   - `DOCKERHUB_USERNAME` (your Docker Hub username)
+   - `DOCKERHUB_TOKEN` (a Docker Hub access token with push rights)
 
-See `reflection_module10.md` for a short reflection on:
-- Password hashing and Pydantic validation.
-- Hurdles with Docker Hub authentication, environment variables, and CI.
+After those are set, the workflow will log in and push the built image to Docker Hub.
+
+## Troubleshooting CI Docker push errors
+
+- If you see `push access denied` or `insufficient_scope` errors, confirm:
+  - The Docker Hub repository exists under the username provided.
+  - The `DOCKERHUB_TOKEN` is a valid access token with write/push scope.
+
+## Next steps (optional)
+
+- Add BREAD endpoints for `Calculation` (Module 12).
+- Link calculations to users via `user_id` foreign key (if desired).
+- Improve CI caching for Docker build to speed up builds.
+
+If you want me to implement any of those next steps, tell me which one and I will proceed.
