@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -21,7 +22,17 @@ logger = setup_logger("fastapi_calculator")  # pragma: no cover
 # Create tables
 Base.metadata.create_all(bind=engine)  # pragma: no cover
 
+
 app = FastAPI(title="FastAPI Calculator with Secure User Model")
+
+# Enable CORS for frontend on port 8081
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8081", "http://127.0.0.1:8081"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def custom_openapi():

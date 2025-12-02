@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    .error { color: red; }
+    .success { color: green; }
+    form { max-width: 350px; margin: auto; }
+    label { display: block; margin-top: 1em; }
+    input { width: 100%; padding: 0.5em; margin-top: 0.2em; }
+    button { margin-top: 1em; padding: 0.5em 1em; }
+  </style>
+</head>
+<body>
+  <h2>Login</h2>
+  <form id="loginForm">
+    <label>Email:
+      <input type="email" id="email" required />
+    </label>
+    <label>Password:
+      <input type="password" id="password" minlength="6" required />
+    </label>
+    <button type="submit">Login</button>
+    <div id="message"></div>
+  </form>
+  <script>
+    const form = document.getElementById('loginForm');
+    const msg = document.getElementById('message');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      msg.textContent = '';
+      msg.className = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email.match(/^[^@]+@[^@]+\.[^@]+$/)) {
+        msg.textContent = 'Invalid email format.';
+        msg.className = 'error';
+        return;
+      }
+      try {
+        const res = await fetch('http://127.0.0.1:8000/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (res.status === 200) {
+          const data = await res.json();
+          msg.textContent = 'Login successful!';
+          msg.className = 'success';
+          localStorage.setItem('jwt', data.access_token);
+        } else {
+          msg.textContent = 'Invalid credentials.';
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = 'Network error.';
+        msg.className = 'error';
+      }
+    };
+  </script>
+</body>
+</html>
