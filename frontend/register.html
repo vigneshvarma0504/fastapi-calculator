@@ -55,11 +55,14 @@
         return;
       }
       try {
-        const res = await fetch('http://127.0.0.1:8000/users/register', {
+        // Dynamically determine backend URL based on frontend host
+        const backendUrl = window.location.origin.replace('8081','8000') + '/users/register';
+        const res = await fetch(backendUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, username: email, password })
         });
+        console.log('Register response status:', res.status); // for CI debug
         if (res.status === 201) {
           msg.textContent = 'Registration successful!';
           msg.className = 'success';
