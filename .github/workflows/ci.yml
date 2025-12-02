@@ -1,3 +1,4 @@
+
 name: CI - Tests and Docker Deploy
 
 on:
@@ -52,6 +53,13 @@ jobs:
       - name: Install Playwright browsers
         run: python -m playwright install --with-deps
 
+      - name: Start frontend static server
+        run: |
+          cd frontend
+          python -m http.server 8081 &
+          cd ..
+      - name: Wait for frontend server
+        run: sleep 5
       - name: Run tests
         run: pytest --cov=app --cov-report=term-missing
 
