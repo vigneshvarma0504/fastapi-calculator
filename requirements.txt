@@ -5,7 +5,10 @@ psycopg2-binary
 
 pydantic[email]    # this pulls in email-validator
 passlib            # for password hashing (we use pbkdf2_sha256)
+
 pyjwt              # for JWT token generation and verification
+playwright
+pytest-playwright
 
 pytest
 pytest-cov
