@@ -1,4 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, Float, Enum as SQLEnum
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    func,
+    UniqueConstraint,
+    Float,
+    Enum as SQLEnum,
+    ForeignKey,
+    Boolean,
+)
+from sqlalchemy.orm import relationship
 from .database import Base
 
 from app.operations import OperationType
@@ -15,7 +27,20 @@ class User(Base):
     username = Column(String(50), nullable=False, index=True)
     email = Column(String(255), nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(50), nullable=False, server_default="user")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String(500), nullable=False, unique=True, index=True)
+    revoked = Column(Boolean, nullable=False, server_default="0")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", backref="refresh_tokens")
 
 
 class Calculation(Base):

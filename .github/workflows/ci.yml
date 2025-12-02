@@ -30,6 +30,8 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/calculator_db
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      # set this secret to your full Docker Hub repo (e.g. "myuser/fastapi-calculator")
+      DOCKER_HUB_REPO: ${{ secrets.DOCKER_HUB_REPO }}
 
     steps:
       - name: Checkout code
@@ -49,24 +51,46 @@ jobs:
       - name: Run tests
         run: pytest --cov=app --cov-report=term-missing
 
+      - name: Notify Slack (on success)
+        if: ${{ env.SLACK_WEBHOOK != '' && success() }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          fields: repo,commit,author
+          custom_payload: |
+            {"text": "CI succeeded for ${{ github.repository }} on `${{ github.ref }}` — tests passed."}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify Slack (on failure)
+        if: ${{ env.SLACK_WEBHOOK != '' && failure() }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          fields: repo,commit,author
+          custom_payload: |
+            {"text": "CI failed for ${{ github.repository }} on `${{ github.ref }}` — check workflow run."}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
       - name: Log in to Docker Hub
-        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' && env.DOCKER_HUB_REPO != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' && env.DOCKER_HUB_REPO != '' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
-        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.DOCKERHUB_USERNAME != '' && env.DOCKER_HUB_REPO != '' }}
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/fastapi-calculator:latest
-            ${{ env.DOCKERHUB_USERNAME }}/fastapi-calculator:${{ github.sha }}
+            ${{ env.DOCKER_HUB_REPO }}:latest
+            ${{ env.DOCKER_HUB_REPO }}:${{ github.sha }}

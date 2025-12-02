@@ -76,6 +76,18 @@ uvicorn app.main:app --reload
 
 Open http://127.0.0.1:8000/docs to explore the API.
 
+## Authentication (JWT)
+
+This project includes JWT-based authentication for protected endpoints (calculations).
+
+- Register a user: `POST /users/register` with JSON `{ "username": "u", "email": "e@e.com", "password": "pw" }`.
+- Login to receive a token: `POST /users/login` with JSON `{ "username": "u", "password": "pw" }` — response contains `access_token`.
+- Use the token when calling protected endpoints by setting the `Authorization` header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
 ## Run tests locally
 
 Run all tests with coverage:
@@ -91,6 +103,40 @@ pytest tests/test_calculations.py tests/integration/test_calculations_integratio
 ```
 
 Integration tests use `TEST_DATABASE_URL` if provided; otherwise a local SQLite file is used by default.
+
+## Integration tests (end-to-end)
+
+Integration tests hit the running FastAPI app using `TestClient`. To run only integration tests:
+
+```powershell
+pytest tests/integration -q
+```
+
+If you want to run integration tests against a Postgres instance, set `TEST_DATABASE_URL` to a valid Postgres DSN before running tests.
+
+## Database migrations (Alembic)
+
+This project includes an Alembic scaffold under `alembic/` to manage schema migrations.
+
+Quickstart:
+
+1. Install Alembic in your environment:
+
+```powershell
+pip install alembic
+```
+
+2. Initialize (already scaffolded here) or generate a migration:
+
+```powershell
+# generate a new revision with autogenerate
+alembic revision --autogenerate -m "describe change"
+
+# then apply migrations
+alembic upgrade head
+```
+
+The `alembic/env.py` uses `DATABASE_URL` env var (defaults to local sqlite). In CI, set `DATABASE_URL` (or `TEST_DATABASE_URL`) appropriately.
 
 ## CI / GitHub Actions
 
@@ -110,6 +156,12 @@ Workflow: `.github/workflows/ci.yml`
    - `DOCKERHUB_TOKEN` (a Docker Hub access token with push rights)
 
 After those are set, the workflow will log in and push the built image to Docker Hub.
+
+### Docker Hub placeholder
+
+This repository's CI is configured to push an image to Docker Hub when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set in GitHub Actions secrets. Replace the placeholder below with your actual Docker Hub repo when you enable CI pushes:
+
+`DOCKER_HUB_REPO = your-dockerhub-username/fastapi-calculator`
 
 ## Troubleshooting CI Docker push errors
 

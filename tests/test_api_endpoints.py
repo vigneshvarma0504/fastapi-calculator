@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database import Base, get_db
+from app import models
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -86,8 +87,27 @@ def test_list_users_returns_created_users():
     r = client.post("/users/", json=payload)
     assert r.status_code == 201
 
+    # create an admin user to list users
+    admin_payload = {"username": "admin", "email": "admin@example.com", "password": "adminpass"}
+    r = client.post("/users/", json=admin_payload)
+    assert r.status_code == 201
+
+    # elevate the admin user role directly in DB (tests run against test DB)
+    db = next(override_get_db())
+    admin = db.query(models.User).filter(models.User.username == "admin").first()
+    admin.role = "admin"
+    db.add(admin)
+    db.commit()
+
+    # login as admin to get token
+    login = {"username": "admin", "password": "adminpass"}
+    r = client.post("/users/login", json=login)
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # call GET /users/ to hit list_users in app.main
-    resp = client.get("/users/")
+    resp = client.get("/users/", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
 

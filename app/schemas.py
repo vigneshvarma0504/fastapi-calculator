@@ -1,5 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, Field, model_validator, ConfigDict
 
 from app.operations import OperationType
 
@@ -13,11 +14,21 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=6, max_length=100)
 
 
+class UserLogin(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class UserRead(UserBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    role: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CalculationCreate(BaseModel):
@@ -38,7 +49,37 @@ class CalculationRead(BaseModel):
     b: float
     type: OperationType
     result: Optional[float]
-    created_at: Optional[str]
+    created_at: Optional[datetime]
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+class Token(BaseModel):
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenRead(BaseModel):
+    id: int
+    revoked: bool
+    created_at: Optional[datetime]
+    expires_at: Optional[datetime]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserWithTokenCount(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    role: str
+    token_count: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoleUpdate(BaseModel):
+    role: str
+    model_config = ConfigDict(from_attributes=True)
