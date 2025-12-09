@@ -20,13 +20,41 @@ class UserLogin(BaseModel):
     password: str
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
 class UserRead(UserBase):
     id: int
+    role: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenRead(BaseModel):
+    id: int
+    revoked: bool
+    created_at: Optional[datetime]
+    expires_at: Optional[datetime]
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserWithTokenCount(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    role: str
+    token_count: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RoleUpdate(BaseModel):
     role: str
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +98,8 @@ class CalculationUpdate(BaseModel):
         if self.operands is not None and len(self.operands) < 2:
             raise ValueError("At least 2 operands are required")
         
+        # Note: Division by zero is checked at computation time for partial updates
+        
         return self
 
 
@@ -81,36 +111,4 @@ class CalculationRead(BaseModel):
     result: Optional[float]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
-    model_config = ConfigDict(from_attributes=True)
-
-class Token(BaseModel):
-    access_token: str
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
-    model_config = ConfigDict(from_attributes=True)
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-
-class RefreshTokenRead(BaseModel):
-    id: int
-    revoked: bool
-    created_at: Optional[datetime]
-    expires_at: Optional[datetime]
-    model_config = ConfigDict(from_attributes=True)
-
-
-class UserWithTokenCount(BaseModel):
-    id: int
-    username: str
-    email: EmailStr
-    role: str
-    token_count: int
-    model_config = ConfigDict(from_attributes=True)
-
-
-class RoleUpdate(BaseModel):
-    role: str
     model_config = ConfigDict(from_attributes=True)

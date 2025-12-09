@@ -63,8 +63,7 @@ def compute_result_multi(operands: List[float], operation: str) -> float:
         The computed result
         
     Raises:
-        ValueError: For invalid operations (e.g., division by zero, invalid operands)
-        KeyError: For unknown operation types
+        ValueError: For invalid operations (e.g., division by zero, invalid operands, or unsupported operation)
     """
     if not operands or len(operands) < 2:
         raise ValueError("At least 2 operands are required")
@@ -103,4 +102,5 @@ def compute_result_multi(operands: List[float], operation: str) -> float:
             result /= num
         return result
     
-    raise ValueError(f"Unsupported operation: {operation}")
+    # This should never be reached due to the check above
+    raise ValueError(f"Unsupported operation: {operation}")  # pragma: no cover
