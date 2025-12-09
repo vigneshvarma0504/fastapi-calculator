@@ -52,7 +52,7 @@ jobs:
 
       - name: Run database migrations
         run: |
-          # Initialize the alembic version table if it doesn't exist
+          # Drop all existing tables and alembic_version to start fresh
           python -c "
           import os
           from sqlalchemy import create_engine, text
@@ -61,7 +61,21 @@ jobs:
           with engine.connect() as conn:
               # Drop alembic_version table if it exists
               try:
-                  conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
+                  conn.execute(text('DROP TABLE IF EXISTS alembic_version CASCADE'))
+                  conn.commit()
+              except:
+                  pass
+              # Drop all other tables
+              try:
+                  conn.execute(text('''
+                      DO \$\$ DECLARE
+                          r RECORD;
+                      BEGIN
+                          FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+                              EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+                          END LOOP;
+                      END \$\$;
+                  '''))
                   conn.commit()
               except:
                   pass
