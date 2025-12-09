@@ -48,9 +48,12 @@
         });
         if (res.status === 200) {
           const data = await res.json();
-          msg.textContent = 'Login successful!';
+          msg.textContent = 'Login successful! Redirecting...';
           msg.className = 'success';
           localStorage.setItem('jwt', data.access_token);
+          setTimeout(() => {
+            window.location.href = 'calculations.html';
+          }, 1000);
         } else {
           msg.textContent = 'Invalid credentials.';
           msg.className = 'error';

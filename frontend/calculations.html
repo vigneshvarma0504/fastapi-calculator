@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Calculations</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 2em; 
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background-color: white;
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5em;
+    }
+    h2 { margin: 0; }
+    .error { color: red; margin: 1em 0; }
+    .success { color: green; margin: 1em 0; }
+    .btn {
+      padding: 0.6em 1.2em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn:hover { background-color: #0056b3; }
+    .btn-danger {
+      background-color: #dc3545;
+    }
+    .btn-danger:hover { background-color: #c82333; }
+    .btn-small {
+      padding: 0.4em 0.8em;
+      font-size: 0.9em;
+      margin: 0 0.2em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      padding: 0.8em;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+    }
+    tr:hover { background-color: #f8f9fa; }
+    .actions {
+      white-space: nowrap;
+    }
+    .logout-link {
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 0.9em;
+    }
+    .logout-link:hover { color: #0056b3; }
+    .no-data {
+      text-align: center;
+      padding: 2em;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>My Calculations</h2>
+      <div>
+        <a href="calculation_form.html" class="btn">+ New Calculation</a>
+        <span class="logout-link" onclick="logout()">Logout</span>
+      </div>
+    </div>
+    <div id="message"></div>
+    <table id="calculationsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Operation</th>
+          <th>Operands</th>
+          <th>Result</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="calculationsBody">
+        <tr>
+          <td colspan="6" class="no-data">Loading...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    // Check if user is logged in
+    const token = localStorage.getItem('jwt');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Load calculations on page load
+    window.addEventListener('DOMContentLoaded', loadCalculations);
+
+    async function loadCalculations() {
+      const msg = document.getElementById('message');
+      const tbody = document.getElementById('calculationsBody');
+      msg.textContent = '';
+      msg.className = '';
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (res.status === 401) {
+          msg.textContent = 'Session expired. Please login again.';
+          msg.className = 'error';
+          setTimeout(() => {
+            localStorage.removeItem('jwt');
+            window.location.href = 'login.html';
+          }, 2000);
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error('Failed to load calculations');
+        }
+
+        const calculations = await res.json();
+        
+        if (calculations.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="no-data">No calculations yet. Create your first one!</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = calculations.map(calc => `
+          <tr>
+            <td>${calc.id}</td>
+            <td>${calc.operation}</td>
+            <td>${calc.operands.join(', ')}</td>
+            <td>${calc.result !== null ? calc.result : 'N/A'}</td>
+            <td>${new Date(calc.created_at).toLocaleString()}</td>
+            <td class="actions">
+              <a href="calculation_form.html?id=${calc.id}" class="btn btn-small">Edit</a>
+              <button onclick="deleteCalculation(${calc.id})" class="btn btn-small btn-danger">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        msg.textContent = 'Error loading calculations: ' + err.message;
+        msg.className = 'error';
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Error loading calculations</td></tr>';
+      }
+    }
+
+    async function deleteCalculation(id) {
+      if (!confirm('Are you sure you want to delete this calculation?')) {
+        return;
+      }
+
+      const msg = document.getElementById('message');
+      msg.textContent = '';
+      msg.className = '';
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (res.status === 204) {
+          msg.textContent = 'Calculation deleted successfully!';
+          msg.className = 'success';
+          loadCalculations(); // Reload the list
+        } else if (res.status === 403) {
+          msg.textContent = 'Access denied. You can only delete your own calculations.';
+          msg.className = 'error';
+        } else if (res.status === 404) {
+          msg.textContent = 'Calculation not found.';
+          msg.className = 'error';
+        } else {
+          throw new Error('Failed to delete calculation');
+        }
+      } catch (err) {
+        msg.textContent = 'Error deleting calculation: ' + err.message;
+        msg.className = 'error';
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('jwt');
+      window.location.href = 'login.html';
+    }
+  </script>
+</body>
+</html>
