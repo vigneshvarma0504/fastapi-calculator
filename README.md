@@ -1,4 +1,4 @@
-# FastAPI Calculator – Complete Backend (Module 12)
+# FastAPI Calculator – Complete Backend (Module 14)
 
 A fully containerized FastAPI Calculator Web Application integrated with PostgreSQL with **secure user management, JWT authentication, Calculation BREAD endpoints, comprehensive integration tests, and CI/CD pipeline that automatically tests and deploys to Docker Hub**.
 
@@ -361,12 +361,19 @@ fastapi-calculator-main/
 
 ## Next Steps
 
-This module completes the back-end logic for the FastAPI Calculator. The next module (Module 13) will add a React frontend to consume these APIs.
+This Module 14 release completes the backend, CI/CD hardening, and Docker publishing. Next steps: add or refine the frontend (e.g., React) and automate deployment promotion.
 
 ## License
 
 MIT License – See LICENSE file for details
 
+
+## What I added in Module 14
+
+- CI/CD hardening: fixed Alembic pathing, ensured database reset before tests, and stabilized GitHub Actions with Docker build/push steps gated by secrets.
+- Docker Hub publishing: builds the image from `Dockerfile` and tags both `latest` and the commit SHA to the repo defined in `DOCKER_HUB_REPO` when pushing to `main`.
+- Testing & coverage: expanded auth and calculation edge-case tests, keeping coverage at ~99% with clean database state on each run.
+- Frontend touch-ups: login/register pages include the password field and clearer status messages.
 
 ## What I added in Module 10
 
