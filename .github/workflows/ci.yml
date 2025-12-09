@@ -51,7 +51,22 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run database migrations
-        run: alembic upgrade head
+        run: |
+          # Initialize the alembic version table if it doesn't exist
+          python -c "
+          import os
+          from sqlalchemy import create_engine, text
+          db_url = os.getenv('DATABASE_URL')
+          engine = create_engine(db_url)
+          with engine.connect() as conn:
+              # Drop alembic_version table if it exists
+              try:
+                  conn.execute(text('DROP TABLE IF EXISTS alembic_version'))
+                  conn.commit()
+              except:
+                  pass
+          "
+          alembic upgrade head
 
       - name: Run unit and integration tests
         run: pytest tests/ --ignore=tests/e2e/ --cov=app --cov-report=term-missing --cov-report=xml
