@@ -1,9 +1,14 @@
 from logging.config import fileConfig
 import os
+import sys
+from pathlib import Path
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
