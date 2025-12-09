@@ -399,7 +399,14 @@ def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), _
 
 @app.get("/calculations", response_model=List[schemas.CalculationRead])
 def list_calculations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    calcs = db.query(models.Calculation).offset(skip).limit(limit).all()
+    """List all calculations belonging to the authenticated user with pagination."""
+    calcs = (
+        db.query(models.Calculation)
+        .filter(models.Calculation.user_id == current_user.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return calcs
 
 
@@ -409,12 +416,24 @@ def list_calculations(skip: int = 0, limit: int = 100, db: Session = Depends(get
     status_code=status.HTTP_201_CREATED,
 )
 def create_calculation(calc_in: schemas.CalculationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Create a new calculation for the authenticated user."""
     # compute result using business logic
-    from app.operations import compute_result
+    from app.operations import compute_result_multi
 
-    result = compute_result(calc_in.a, calc_in.b, calc_in.type)
+    try:
+        result = compute_result_multi(calc_in.operands, calc_in.operation)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
 
-    db_calc = models.Calculation(a=calc_in.a, b=calc_in.b, type=calc_in.type, result=result)
+    db_calc = models.Calculation(
+        user_id=current_user.id,
+        operation=calc_in.operation.lower(),
+        operands=calc_in.operands,
+        result=result
+    )
     db.add(db_calc)
     db.commit()
     db.refresh(db_calc)
@@ -423,24 +442,76 @@ def create_calculation(calc_in: schemas.CalculationCreate, db: Session = Depends
 
 @app.get("/calculations/{calc_id}", response_model=schemas.CalculationRead)
 def read_calculation(calc_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Get a specific calculation by ID. Only the owner can access it."""
     calc = db.query(models.Calculation).filter(models.Calculation.id == calc_id).first()
     if not calc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calculation not found")
+    
+    # Check ownership
+    if calc.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
     return calc
 
 
 @app.put("/calculations/{calc_id}", response_model=schemas.CalculationRead)
 def update_calculation(calc_id: int, calc_in: schemas.CalculationCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Update a calculation (full update). Only the owner can update it."""
     calc = db.query(models.Calculation).filter(models.Calculation.id == calc_id).first()
     if not calc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calculation not found")
+    
+    # Check ownership
+    if calc.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    from app.operations import compute_result
+    from app.operations import compute_result_multi
 
-    calc.a = calc_in.a
-    calc.b = calc_in.b
-    calc.type = calc_in.type
-    calc.result = compute_result(calc.a, calc.b, calc.type)
+    try:
+        result = compute_result_multi(calc_in.operands, calc_in.operation)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+
+    calc.operation = calc_in.operation.lower()
+    calc.operands = calc_in.operands
+    calc.result = result
+    db.add(calc)
+    db.commit()
+    db.refresh(calc)
+    return calc
+
+
+@app.patch("/calculations/{calc_id}", response_model=schemas.CalculationRead)
+def partial_update_calculation(calc_id: int, calc_in: schemas.CalculationUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Partially update a calculation (PATCH). Only the owner can update it."""
+    calc = db.query(models.Calculation).filter(models.Calculation.id == calc_id).first()
+    if not calc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calculation not found")
+    
+    # Check ownership
+    if calc.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # Update only provided fields
+    if calc_in.operation is not None:
+        calc.operation = calc_in.operation.lower()
+    if calc_in.operands is not None:
+        calc.operands = calc_in.operands
+    
+    # Recompute result with current values
+    from app.operations import compute_result_multi
+    
+    try:
+        calc.result = compute_result_multi(calc.operands, calc.operation)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    
     db.add(calc)
     db.commit()
     db.refresh(calc)
@@ -449,9 +520,15 @@ def update_calculation(calc_id: int, calc_in: schemas.CalculationCreate, db: Ses
 
 @app.delete("/calculations/{calc_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_calculation(calc_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Delete a calculation. Only the owner can delete it."""
     calc = db.query(models.Calculation).filter(models.Calculation.id == calc_id).first()
     if not calc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calculation not found")
+    
+    # Check ownership
+    if calc.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    
     db.delete(calc)
     db.commit()
     return None

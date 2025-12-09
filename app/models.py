@@ -9,11 +9,10 @@ from sqlalchemy import (
     Enum as SQLEnum,
     ForeignKey,
     Boolean,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
-
-from app.operations import OperationType
 
 
 class User(Base):
@@ -53,10 +52,11 @@ class Calculation(Base):
     __tablename__ = "calculations"
 
     id = Column(Integer, primary_key=True, index=True)
-    a = Column(Float, nullable=False)
-    b = Column(Float, nullable=False)
-    # store operation as an enum (Add, Sub, Multiply, Divide)
-    type = Column(SQLEnum(OperationType, name="operation_type"), nullable=False)
-    # store result to make querying easier; can be computed on demand alternatively
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    operation = Column(String(50), nullable=False)  # "add", "sub", "mul", "div"
+    operands = Column(JSON, nullable=False)  # list of numbers
     result = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", backref="calculations")
