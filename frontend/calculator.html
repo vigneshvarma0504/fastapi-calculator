@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculator - BREAD Operations</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background-color: white;
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .error { color: red; margin-top: 0.5em; }
+    .success { color: green; margin-top: 0.5em; }
+    .section {
+      margin-bottom: 2em;
+      padding: 1.5em;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #fafafa;
+    }
+    h2 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 0.5em; }
+    h3 { color: #555; }
+    label { display: block; margin-top: 1em; font-weight: bold; }
+    input, select { width: 100%; padding: 0.5em; margin-top: 0.2em; box-sizing: border-box; }
+    button {
+      margin-top: 1em;
+      padding: 0.7em 1.5em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background-color: #45a049; }
+    button.delete-btn {
+      background-color: #f44336;
+      padding: 0.5em 1em;
+      margin-left: 0.5em;
+    }
+    button.delete-btn:hover { background-color: #da190b; }
+    button.edit-btn {
+      background-color: #2196F3;
+      padding: 0.5em 1em;
+      margin-left: 0.5em;
+    }
+    button.edit-btn:hover { background-color: #0b7dda; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      padding: 0.8em;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    tr:hover { background-color: #f5f5f5; }
+    .logout-btn {
+      background-color: #ff9800;
+      float: right;
+      margin-top: -1em;
+    }
+    .logout-btn:hover { background-color: #e68900; }
+    #userInfo {
+      color: #666;
+      margin-bottom: 1em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Calculator Dashboard
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </h2>
+    <div id="userInfo"></div>
+    
+    <!-- Add New Calculation Section -->
+    <div class="section">
+      <h3>➕ Add New Calculation</h3>
+      <form id="addForm">
+        <label>First Number (a):
+          <input type="number" step="any" id="add_a" required />
+        </label>
+        <label>Second Number (b):
+          <input type="number" step="any" id="add_b" required />
+        </label>
+        <label>Operation:
+          <select id="add_type" required>
+            <option value="Add">Add</option>
+            <option value="Sub">Subtract</option>
+            <option value="Multiply">Multiply</option>
+            <option value="Divide">Divide</option>
+          </select>
+        </label>
+        <button type="submit">Create Calculation</button>
+        <div id="addMessage"></div>
+      </form>
+    </div>
+
+    <!-- Browse All Calculations Section -->
+    <div class="section">
+      <h3>📋 Browse All Calculations</h3>
+      <button onclick="loadCalculations()">Refresh List</button>
+      <div id="browseMessage"></div>
+      <div id="calculationsList"></div>
+    </div>
+
+    <!-- Read Specific Calculation Section -->
+    <div class="section">
+      <h3>🔍 Read Specific Calculation</h3>
+      <form id="readForm">
+        <label>Calculation ID:
+          <input type="number" id="read_id" required />
+        </label>
+        <button type="submit">Get Calculation</button>
+        <div id="readMessage"></div>
+      </form>
+      <div id="readResult"></div>
+    </div>
+
+    <!-- Edit Calculation Section -->
+    <div class="section">
+      <h3>✏️ Edit Calculation</h3>
+      <form id="editForm">
+        <label>Calculation ID:
+          <input type="number" id="edit_id" required />
+        </label>
+        <label>New First Number (a):
+          <input type="number" step="any" id="edit_a" required />
+        </label>
+        <label>New Second Number (b):
+          <input type="number" step="any" id="edit_b" required />
+        </label>
+        <label>New Operation:
+          <select id="edit_type" required>
+            <option value="Add">Add</option>
+            <option value="Sub">Subtract</option>
+            <option value="Multiply">Multiply</option>
+            <option value="Divide">Divide</option>
+          </select>
+        </label>
+        <button type="submit">Update Calculation</button>
+        <div id="editMessage"></div>
+      </form>
+    </div>
+
+    <!-- Delete Calculation Section -->
+    <div class="section">
+      <h3>🗑️ Delete Calculation</h3>
+      <form id="deleteForm">
+        <label>Calculation ID:
+          <input type="number" id="delete_id" required />
+        </label>
+        <button type="submit" class="delete-btn">Delete Calculation</button>
+        <div id="deleteMessage"></div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+    
+    // Check authentication on page load
+    window.onload = () => {
+      const token = localStorage.getItem('jwt');
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+      loadCalculations();
+    };
+
+    function logout() {
+      localStorage.removeItem('jwt');
+      window.location.href = 'login.html';
+    }
+
+    // Helper to get auth headers
+    function getAuthHeaders() {
+      const token = localStorage.getItem('jwt');
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+    }
+
+    // Helper to handle auth errors
+    function handleAuthError(response) {
+      if (response.status === 401) {
+        alert('Session expired. Please login again.');
+        logout();
+        return true;
+      }
+      return false;
+    }
+
+    // Validation: Check if number is valid
+    function isValidNumber(value) {
+      return !isNaN(value) && isFinite(value);
+    }
+
+    // Validation: Check division by zero
+    function validateDivision(operation, b) {
+      if (operation === 'Divide' && parseFloat(b) === 0) {
+        return 'Division by zero is not allowed';
+      }
+      return null;
+    }
+
+    // ADD NEW CALCULATION
+    document.getElementById('addForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('addMessage');
+      msg.textContent = '';
+      msg.className = '';
+
+      const a = parseFloat(document.getElementById('add_a').value);
+      const b = parseFloat(document.getElementById('add_b').value);
+      const type = document.getElementById('add_type').value;
+
+      // Client-side validation
+      if (!isValidNumber(a) || !isValidNumber(b)) {
+        msg.textContent = 'Please enter valid numbers';
+        msg.className = 'error';
+        return;
+      }
+
+      const divError = validateDivision(type, b);
+      if (divError) {
+        msg.textContent = divError;
+        msg.className = 'error';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ a, b, type })
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 201) {
+          const data = await res.json();
+          msg.textContent = `✅ Calculation created successfully! ID: ${data.id}, Result: ${data.result}`;
+          msg.className = 'success';
+          document.getElementById('addForm').reset();
+          loadCalculations();
+        } else {
+          const error = await res.json();
+          msg.textContent = `❌ Error: ${error.detail || 'Failed to create calculation'}`;
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = `❌ Network error: ${err.message}`;
+        msg.className = 'error';
+      }
+    };
+
+    // BROWSE ALL CALCULATIONS
+    async function loadCalculations() {
+      const msg = document.getElementById('browseMessage');
+      const list = document.getElementById('calculationsList');
+      msg.textContent = '';
+      msg.className = '';
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations`, {
+          method: 'GET',
+          headers: getAuthHeaders()
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 200) {
+          const data = await res.json();
+          
+          if (data.length === 0) {
+            list.innerHTML = '<p>No calculations found. Create one above!</p>';
+            return;
+          }
+
+          let html = '<table><thead><tr><th>ID</th><th>Operation</th><th>A</th><th>B</th><th>Result</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+          
+          data.forEach(calc => {
+            const date = new Date(calc.created_at).toLocaleString();
+            html += `
+              <tr>
+                <td>${calc.id}</td>
+                <td>${calc.type}</td>
+                <td>${calc.a}</td>
+                <td>${calc.b}</td>
+                <td><strong>${calc.result}</strong></td>
+                <td>${date}</td>
+                <td>
+                  <button class="edit-btn" onclick="fillEditForm(${calc.id}, ${calc.a}, ${calc.b}, '${calc.type}')">Edit</button>
+                  <button class="delete-btn" onclick="deleteCalculation(${calc.id})">Delete</button>
+                </td>
+              </tr>
+            `;
+          });
+          
+          html += '</tbody></table>';
+          list.innerHTML = html;
+          msg.textContent = `✅ Loaded ${data.length} calculation(s)`;
+          msg.className = 'success';
+        } else {
+          msg.textContent = '❌ Failed to load calculations';
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = `❌ Network error: ${err.message}`;
+        msg.className = 'error';
+      }
+    }
+
+    // READ SPECIFIC CALCULATION
+    document.getElementById('readForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('readMessage');
+      const result = document.getElementById('readResult');
+      msg.textContent = '';
+      msg.className = '';
+      result.innerHTML = '';
+
+      const id = document.getElementById('read_id').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          method: 'GET',
+          headers: getAuthHeaders()
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 200) {
+          const data = await res.json();
+          msg.textContent = '✅ Calculation found';
+          msg.className = 'success';
+          
+          result.innerHTML = `
+            <table>
+              <tr><th>ID</th><td>${data.id}</td></tr>
+              <tr><th>User ID</th><td>${data.user_id}</td></tr>
+              <tr><th>Operation</th><td>${data.type}</td></tr>
+              <tr><th>First Number (a)</th><td>${data.a}</td></tr>
+              <tr><th>Second Number (b)</th><td>${data.b}</td></tr>
+              <tr><th>Result</th><td><strong>${data.result}</strong></td></tr>
+              <tr><th>Created At</th><td>${new Date(data.created_at).toLocaleString()}</td></tr>
+            </table>
+          `;
+        } else if (res.status === 404) {
+          msg.textContent = '❌ Calculation not found';
+          msg.className = 'error';
+        } else {
+          msg.textContent = '❌ Error fetching calculation';
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = `❌ Network error: ${err.message}`;
+        msg.className = 'error';
+      }
+    };
+
+    // EDIT CALCULATION
+    function fillEditForm(id, a, b, type) {
+      document.getElementById('edit_id').value = id;
+      document.getElementById('edit_a').value = a;
+      document.getElementById('edit_b').value = b;
+      document.getElementById('edit_type').value = type;
+      
+      // Scroll to edit form
+      document.getElementById('editForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    document.getElementById('editForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('editMessage');
+      msg.textContent = '';
+      msg.className = '';
+
+      const id = document.getElementById('edit_id').value;
+      const a = parseFloat(document.getElementById('edit_a').value);
+      const b = parseFloat(document.getElementById('edit_b').value);
+      const type = document.getElementById('edit_type').value;
+
+      // Client-side validation
+      if (!isValidNumber(a) || !isValidNumber(b)) {
+        msg.textContent = 'Please enter valid numbers';
+        msg.className = 'error';
+        return;
+      }
+
+      const divError = validateDivision(type, b);
+      if (divError) {
+        msg.textContent = divError;
+        msg.className = 'error';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ a, b, type })
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 200) {
+          const data = await res.json();
+          msg.textContent = `✅ Calculation updated successfully! New result: ${data.result}`;
+          msg.className = 'success';
+          loadCalculations();
+        } else if (res.status === 404) {
+          msg.textContent = '❌ Calculation not found';
+          msg.className = 'error';
+        } else {
+          const error = await res.json();
+          msg.textContent = `❌ Error: ${error.detail || 'Failed to update calculation'}`;
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = `❌ Network error: ${err.message}`;
+        msg.className = 'error';
+      }
+    };
+
+    // DELETE CALCULATION
+    document.getElementById('deleteForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('deleteMessage');
+      msg.textContent = '';
+      msg.className = '';
+
+      const id = document.getElementById('delete_id').value;
+
+      if (!confirm(`Are you sure you want to delete calculation #${id}?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 204) {
+          msg.textContent = '✅ Calculation deleted successfully';
+          msg.className = 'success';
+          document.getElementById('deleteForm').reset();
+          loadCalculations();
+        } else if (res.status === 404) {
+          msg.textContent = '❌ Calculation not found';
+          msg.className = 'error';
+        } else {
+          msg.textContent = '❌ Failed to delete calculation';
+          msg.className = 'error';
+        }
+      } catch (err) {
+        msg.textContent = `❌ Network error: ${err.message}`;
+        msg.className = 'error';
+      }
+    };
+
+    // Helper function for inline delete
+    async function deleteCalculation(id) {
+      if (!confirm(`Are you sure you want to delete calculation #${id}?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+
+        if (handleAuthError(res)) return;
+
+        if (res.status === 204) {
+          alert('✅ Calculation deleted successfully');
+          loadCalculations();
+        } else if (res.status === 404) {
+          alert('❌ Calculation not found');
+        } else {
+          alert('❌ Failed to delete calculation');
+        }
+      } catch (err) {
+        alert(`❌ Network error: ${err.message}`);
+      }
+    }
+  </script>
+</body>
+</html>
