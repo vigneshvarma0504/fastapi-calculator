@@ -50,22 +50,15 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov
 
-      - name: Run database migrations
+      - name: Reset database
         run: |
-          # Drop all existing tables and alembic_version to start fresh
           python -c "
           import os
           from sqlalchemy import create_engine, text
           db_url = os.getenv('DATABASE_URL')
           engine = create_engine(db_url)
           with engine.connect() as conn:
-              # Drop alembic_version table if it exists
-              try:
-                  conn.execute(text('DROP TABLE IF EXISTS alembic_version CASCADE'))
-                  conn.commit()
-              except:
-                  pass
-              # Drop all other tables
+              # Drop all tables in public schema
               try:
                   conn.execute(text('''
                       DO \$\$ DECLARE
@@ -77,10 +70,9 @@ jobs:
                       END \$\$;
                   '''))
                   conn.commit()
-              except:
-                  pass
+              except Exception as e:
+                  print(f'Error resetting database: {e}')
           "
-          alembic upgrade head
 
       - name: Run unit and integration tests
         run: pytest tests/ --ignore=tests/e2e/ --cov=app --cov-report=term-missing --cov-report=xml
