@@ -101,9 +101,9 @@ def test_calculation_not_found_and_delete():
     r = client.get("/calculations/9999", headers=headers)
     assert r.status_code == 404
     # Update non-existent calculation
-    payload = {"a": 1, "b": 2, "type": "add"}
+    payload = {"operation": "add", "operands": [1, 2]}
     r = client.put("/calculations/9999", json=payload, headers=headers)
-    assert r.status_code in (404, 422)
+    assert r.status_code == 404
     # Delete non-existent calculation
     r = client.delete("/calculations/9999", headers=headers)
     assert r.status_code == 404

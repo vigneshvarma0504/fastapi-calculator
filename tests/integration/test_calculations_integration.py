@@ -4,8 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.models import Calculation
-from app.operations import compute_result, OperationType
+from app.models import Calculation, User
+from app.operations import compute_result_multi
+from app.security import hash_password
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -29,20 +30,38 @@ def setup_database():
 
 
 def test_insert_and_read_calculation():
+    """Test creating and reading a calculation with new schema."""
     db = TestingSessionLocal()
     try:
-        # create calculation and compute result
-        a, b = 20, 4
-        op = OperationType.Divide
-        result = compute_result(a, b, op)
+        # Create a user first (required for foreign key)
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            password_hash=hash_password("password123")
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
-        calc = Calculation(a=a, b=b, type=op, result=result)
+        # create calculation with new schema
+        operands = [20, 4]
+        operation = "div"
+        result = compute_result_multi(operands, operation)
+
+        calc = Calculation(
+            user_id=user.id,
+            operation=operation,
+            operands=operands,
+            result=result
+        )
         db.add(calc)
         db.commit()
         db.refresh(calc)
 
         assert calc.id is not None
         assert calc.result == 5
-        assert calc.type == OperationType.Divide
+        assert calc.operation == "div"
+        assert calc.operands == [20, 4]
+        assert calc.user_id == user.id
     finally:
         db.close()

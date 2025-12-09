@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, model_validator, ConfigDict
 
@@ -20,37 +20,11 @@ class UserLogin(BaseModel):
     password: str
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
 class UserRead(UserBase):
     id: int
     role: str
     model_config = ConfigDict(from_attributes=True)
 
-
-class CalculationCreate(BaseModel):
-    a: float
-    b: float
-    type: OperationType
-
-    @model_validator(mode="after")
-    def check_division_by_zero(self):
-        if self.type == OperationType.Divide and self.b == 0:
-            raise ValueError("Division by zero is not allowed")
-        return self
-
-
-class CalculationRead(BaseModel):
-    id: int
-    a: float
-    b: float
-    type: OperationType
-    result: Optional[float]
-    created_at: Optional[datetime]
-    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
@@ -82,4 +56,59 @@ class UserWithTokenCount(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CalculationCreate(BaseModel):
+    operation: str = Field(..., description="Operation type: add, sub, mul, or div")
+    operands: List[float] = Field(..., min_length=2, description="List of operands (at least 2)")
+
+    @model_validator(mode="after")
+    def validate_operation_and_operands(self):
+        # Validate operation is supported
+        valid_operations = ["add", "sub", "mul", "div"]
+        if self.operation.lower() not in valid_operations:
+            raise ValueError(f"Operation must be one of: {', '.join(valid_operations)}")
+        
+        # Validate operands length
+        if len(self.operands) < 2:
+            raise ValueError("At least 2 operands are required")
+        
+        # Check for division by zero
+        if self.operation.lower() == "div" and any(op == 0 for op in self.operands[1:]):
+            raise ValueError("Division by zero is not allowed")
+        
+        return self
+
+
+class CalculationUpdate(BaseModel):
+    """Schema for PATCH updates - all fields optional"""
+    operation: Optional[str] = Field(None, description="Operation type: add, sub, mul, or div")
+    operands: Optional[List[float]] = Field(None, min_length=2, description="List of operands (at least 2)")
+
+    @model_validator(mode="after")
+    def validate_operation_and_operands(self):
+        # Validate operation if provided
+        if self.operation is not None:
+            valid_operations = ["add", "sub", "mul", "div"]
+            if self.operation.lower() not in valid_operations:
+                raise ValueError(f"Operation must be one of: {', '.join(valid_operations)}")
+        
+        # Validate operands length if provided
+        if self.operands is not None and len(self.operands) < 2:
+            raise ValueError("At least 2 operands are required")
+        
+        # Note: Division by zero is checked at computation time for partial updates
+        
+        return self
+
+
+class CalculationRead(BaseModel):
+    id: int
+    user_id: int
+    operation: str
+    operands: List[float]
+    result: Optional[float]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
     model_config = ConfigDict(from_attributes=True)

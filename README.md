@@ -120,9 +120,8 @@ curl -X POST "http://127.0.0.1:8000/calculations" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <access_token>" \
   -d '{
-    "a": 10,
-    "b": 5,
-    "type": "Add"
+    "operation": "add",
+    "operands": [10, 5, 3]
   }'
 ```
 
@@ -130,15 +129,18 @@ Response:
 ```json
 {
   "id": 1,
-  "a": 10,
-  "b": 5,
-  "type": "Add",
-  "result": 15,
-  "created_at": "2025-12-02T03:00:00"
+  "user_id": 1,
+  "operation": "add",
+  "operands": [10, 5, 3],
+  "result": 18,
+  "created_at": "2025-12-09T00:00:00",
+  "updated_at": "2025-12-09T00:00:00"
 }
 ```
 
 ### Calculation Examples
+
+**New Schema**: The API now supports multiple operands (2 or more) for all operations. Operations are specified as strings: `"add"`, `"sub"`, `"mul"`, or `"div"`.
 
 #### Create a calculation
 ```bash
@@ -146,13 +148,23 @@ curl -X POST "http://127.0.0.1:8000/calculations" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "a": 20,
-    "b": 4,
-    "type": "Divide"
+    "operation": "div",
+    "operands": [20, 4]
   }'
 ```
 
-#### Get all calculations
+#### Create with multiple operands
+```bash
+curl -X POST "http://127.0.0.1:8000/calculations" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "add",
+    "operands": [10, 20, 30, 5]
+  }'
+```
+
+#### Get all calculations (filtered by user)
 ```bash
 curl -X GET "http://127.0.0.1:8000/calculations?skip=0&limit=10" \
   -H "Authorization: Bearer <token>"
@@ -164,15 +176,24 @@ curl -X GET "http://127.0.0.1:8000/calculations/1" \
   -H "Authorization: Bearer <token>"
 ```
 
-#### Update a calculation
+#### Update a calculation (PUT - full update)
 ```bash
 curl -X PUT "http://127.0.0.1:8000/calculations/1" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "a": 30,
-    "b": 6,
-    "type": "Multiply"
+    "operation": "mul",
+    "operands": [30, 6, 2]
+  }'
+```
+
+#### Partial update (PATCH)
+```bash
+curl -X PATCH "http://127.0.0.1:8000/calculations/1" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operands": [50, 10]
   }'
 ```
 
@@ -181,6 +202,38 @@ curl -X PUT "http://127.0.0.1:8000/calculations/1" \
 curl -X DELETE "http://127.0.0.1:8000/calculations/1" \
   -H "Authorization: Bearer <token>"
 ```
+
+## Frontend Web Interface
+
+The project includes a web interface for managing calculations:
+
+- **Login Page** (`/frontend/login.html`) - User authentication
+- **Register Page** (`/frontend/register.html`) - New user registration
+- **Calculations List** (`/frontend/calculations.html`) - Browse and manage your calculations
+- **Calculation Form** (`/frontend/calculation_form.html`) - Create and edit calculations
+
+### Running the Frontend
+
+1. Start the backend server:
+```bash
+uvicorn app.main:app --reload
+```
+
+2. In a separate terminal, start the frontend server:
+```bash
+python frontend/serve.py
+```
+
+3. Open your browser to http://localhost:8081/login.html
+
+### Frontend Features
+
+- **Browse**: View all your calculations in a table with ID, operation, operands, result, and created date
+- **Create**: Add new calculations with dynamic operand inputs (2 or more)
+- **Edit**: Update existing calculations with pre-filled form
+- **Delete**: Remove calculations with confirmation dialog
+- **Validation**: Client-side validation for numeric inputs, division by zero, and required fields
+- **Authentication**: Login required to access calculations; automatic redirect on session expiry
 
 ## Running Tests
 
@@ -197,6 +250,11 @@ pytest tests/ -q
 ### Run Only Integration Tests
 ```powershell
 pytest tests/integration/ -q
+```
+
+### Run Only E2E Tests
+```powershell
+pytest tests/e2e/ -q
 ```
 
 ### Run Integration Tests with PostgreSQL
@@ -284,17 +342,29 @@ fastapi-calculator-main/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_api_endpoints.py
+├── tests/
+│   ├── __init__.py
+│   ├── test_api_endpoints.py
 │   ├── test_calculations.py
 │   ├── test_database.py
 │   ├── test_schemas.py
 │   ├── test_security.py
+│   ├── test_full_coverage.py
+│   ├── e2e/
+│   │   └── test_auth_flow.py        # E2E tests for BREAD workflows
 │   └── integration/
 │       ├── __init__.py
 │       ├── test_calculation_endpoints.py    # BREAD endpoint tests
 │       ├── test_calculations_integration.py
 │       └── test_users_integration.py        # User registration/login tests
-├── alembic/                      # Database migration scripts
-├── .github/workflows/ci.yml       # GitHub Actions CI/CD workflow
+├── frontend/
+│   ├── serve.py                     # Frontend development server
+│   ├── login.html                   # Login page
+│   ├── register.html                # Registration page
+│   ├── calculations.html            # Calculations list/browse page
+│   └── calculation_form.html        # Create/edit calculation form
+├── alembic/                         # Database migration scripts
+├── .github/workflows/ci.yml         # GitHub Actions CI/CD workflow
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -313,12 +383,34 @@ fastapi-calculator-main/
 - `DELETE /users/me/tokens/{token_id}` – Revoke a specific token
 - `POST /users/me/revoke` – Revoke token by string
 
-### Calculation Endpoints (Protected)
-- `GET /calculations` – List all calculations
+### Calculation Endpoints (Protected - JWT Required)
+
+All calculation endpoints require JWT authentication and enforce ownership. Users can only access their own calculations.
+
+- `GET /calculations` – List all calculations belonging to the authenticated user (supports pagination with `skip` and `limit`)
 - `POST /calculations` – Create a new calculation
-- `GET /calculations/{id}` – Get calculation by ID
-- `PUT /calculations/{id}` – Update calculation
-- `DELETE /calculations/{id}` – Delete calculation
+  - **Request Body**: `{"operation": "add|sub|mul|div", "operands": [number, number, ...]}`
+  - **Requirements**: At least 2 operands, valid operation, no division by zero
+  - **Returns**: `201 Created` with calculation object including computed result
+- `GET /calculations/{id}` – Get specific calculation by ID (owner only)
+  - **Returns**: `200 OK` with calculation, `403 Forbidden` if not owner, `404 Not Found` if missing
+- `PUT /calculations/{id}` – Full update of calculation (owner only)
+  - **Request Body**: `{"operation": "add|sub|mul|div", "operands": [number, number, ...]}`
+  - **Returns**: `200 OK` with updated calculation and recomputed result
+- `PATCH /calculations/{id}` – Partial update (owner only)
+  - **Request Body**: `{"operation"?: "...", "operands"?: [...]}`  (either or both)
+  - **Returns**: `200 OK` with updated calculation and recomputed result
+- `DELETE /calculations/{id}` – Delete calculation (owner only)
+  - **Returns**: `204 No Content` on success
+
+**Status Codes**:
+- `200 OK` – Successful read/update
+- `201 Created` – Successful creation
+- `204 No Content` – Successful deletion
+- `401 Unauthorized` – Missing or invalid authentication
+- `403 Forbidden` – Attempting to access another user's resource
+- `404 Not Found` – Resource doesn't exist
+- `422 Unprocessable Entity` – Validation error (invalid operands, division by zero, etc.)
 
 ### Simple Operations (Unprotected)
 - `GET /add?a=5&b=3` – Returns `{"operation": "add", "a": 5, "b": 3, "result": 8}`

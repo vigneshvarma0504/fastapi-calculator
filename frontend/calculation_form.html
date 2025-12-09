@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculation Form</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 2em; 
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background-color: white;
+      padding: 2em;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5em;
+    }
+    h2 { margin: 0; }
+    .error { color: red; margin: 1em 0; }
+    .success { color: green; margin: 1em 0; }
+    .back-link {
+      color: #007bff;
+      text-decoration: none;
+    }
+    .back-link:hover { text-decoration: underline; }
+    form { margin-top: 1em; }
+    label {
+      display: block;
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    select, input {
+      width: 100%;
+      padding: 0.6em;
+      margin-top: 0.3em;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .operands-container {
+      margin-top: 1em;
+    }
+    .operand-input {
+      display: flex;
+      align-items: center;
+      margin-top: 0.5em;
+    }
+    .operand-input input {
+      flex: 1;
+      margin-right: 0.5em;
+    }
+    .btn {
+      padding: 0.6em 1.2em;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1em;
+      margin-right: 0.5em;
+    }
+    .btn:hover { background-color: #0056b3; }
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-danger {
+      background-color: #dc3545;
+    }
+    .btn-danger:hover { background-color: #c82333; }
+    .btn-small {
+      padding: 0.4em 0.8em;
+      font-size: 0.9em;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2 id="formTitle">New Calculation</h2>
+      <a href="calculations.html" class="back-link">← Back to List</a>
+    </div>
+    <div id="message"></div>
+    <form id="calculationForm">
+      <label for="operation">Operation:</label>
+      <select id="operation" required>
+        <option value="">-- Select Operation --</option>
+        <option value="add">Addition (+)</option>
+        <option value="sub">Subtraction (−)</option>
+        <option value="mul">Multiplication (×)</option>
+        <option value="div">Division (÷)</option>
+      </select>
+
+      <label>Operands (at least 2 numbers):</label>
+      <div id="operandsContainer" class="operands-container">
+        <div class="operand-input">
+          <input type="number" step="any" class="operand" required placeholder="First operand">
+        </div>
+        <div class="operand-input">
+          <input type="number" step="any" class="operand" required placeholder="Second operand">
+        </div>
+      </div>
+      <button type="button" onclick="addOperand()" class="btn btn-secondary btn-small">+ Add Operand</button>
+
+      <div style="margin-top: 1.5em;">
+        <button type="submit" class="btn">Save Calculation</button>
+        <a href="calculations.html" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+    const token = localStorage.getItem('jwt');
+    
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    // Get calculation ID from URL if editing
+    const urlParams = new URLSearchParams(window.location.search);
+    const calcId = urlParams.get('id');
+    const isEdit = !!calcId;
+
+    if (isEdit) {
+      document.getElementById('formTitle').textContent = 'Edit Calculation';
+      loadCalculation(calcId);
+    }
+
+    async function loadCalculation(id) {
+      const msg = document.getElementById('message');
+      try {
+        const res = await fetch(`${API_BASE}/calculations/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (res.status === 401) {
+          msg.textContent = 'Session expired. Please login again.';
+          msg.className = 'error';
+          setTimeout(() => {
+            localStorage.removeItem('jwt');
+            window.location.href = 'login.html';
+          }, 2000);
+          return;
+        }
+
+        if (res.status === 403) {
+          msg.textContent = 'Access denied. You can only edit your own calculations.';
+          msg.className = 'error';
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error('Failed to load calculation');
+        }
+
+        const calc = await res.json();
+        
+        // Populate form
+        document.getElementById('operation').value = calc.operation;
+        
+        // Clear existing operands and add from calculation
+        const container = document.getElementById('operandsContainer');
+        container.innerHTML = '';
+        calc.operands.forEach((value, index) => {
+          const div = document.createElement('div');
+          div.className = 'operand-input';
+          div.innerHTML = `
+            <input type="number" step="any" class="operand" required value="${value}" placeholder="Operand ${index + 1}">
+            ${index >= 2 ? '<button type="button" onclick="removeOperand(this)" class="btn btn-danger btn-small">Remove</button>' : ''}
+          `;
+          container.appendChild(div);
+        });
+
+      } catch (err) {
+        msg.textContent = 'Error loading calculation: ' + err.message;
+        msg.className = 'error';
+      }
+    }
+
+    function addOperand() {
+      const container = document.getElementById('operandsContainer');
+      const count = container.querySelectorAll('.operand-input').length;
+      const div = document.createElement('div');
+      div.className = 'operand-input';
+      div.innerHTML = `
+        <input type="number" step="any" class="operand" required placeholder="Operand ${count + 1}">
+        <button type="button" onclick="removeOperand(this)" class="btn btn-danger btn-small">Remove</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeOperand(button) {
+      const container = document.getElementById('operandsContainer');
+      const count = container.querySelectorAll('.operand-input').length;
+      if (count > 2) {
+        button.parentElement.remove();
+      } else {
+        alert('You must have at least 2 operands.');
+      }
+    }
+
+    document.getElementById('calculationForm').onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const msg = document.getElementById('message');
+      msg.textContent = '';
+      msg.className = '';
+
+      // Get form data
+      const operation = document.getElementById('operation').value;
+      const operandInputs = document.querySelectorAll('.operand');
+      const operands = Array.from(operandInputs).map(input => parseFloat(input.value));
+
+      // Client-side validation
+      if (!operation) {
+        msg.textContent = 'Please select an operation.';
+        msg.className = 'error';
+        return;
+      }
+
+      if (operands.length < 2) {
+        msg.textContent = 'You must have at least 2 operands.';
+        msg.className = 'error';
+        return;
+      }
+
+      if (operands.some(isNaN)) {
+        msg.textContent = 'All operands must be valid numbers.';
+        msg.className = 'error';
+        return;
+      }
+
+      // Check for division by zero
+      if (operation === 'div' && operands.slice(1).some(op => op === 0)) {
+        msg.textContent = 'Division by zero is not allowed.';
+        msg.className = 'error';
+        return;
+      }
+
+      const payload = { operation, operands };
+
+      try {
+        const url = isEdit ? `${API_BASE}/calculations/${calcId}` : `${API_BASE}/calculations`;
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 401) {
+          msg.textContent = 'Session expired. Please login again.';
+          msg.className = 'error';
+          setTimeout(() => {
+            localStorage.removeItem('jwt');
+            window.location.href = 'login.html';
+          }, 2000);
+          return;
+        }
+
+        if (res.status === 403) {
+          msg.textContent = 'Access denied. You can only modify your own calculations.';
+          msg.className = 'error';
+          return;
+        }
+
+        if (res.status === 422) {
+          const data = await res.json();
+          msg.textContent = 'Validation error: ' + (data.detail || 'Invalid input');
+          msg.className = 'error';
+          return;
+        }
+
+        if (res.status === 201 || res.status === 200) {
+          const calc = await res.json();
+          msg.textContent = `Calculation ${isEdit ? 'updated' : 'created'} successfully! Result: ${calc.result}`;
+          msg.className = 'success';
+          setTimeout(() => {
+            window.location.href = 'calculations.html';
+          }, 1500);
+        } else {
+          throw new Error('Failed to save calculation');
+        }
+      } catch (err) {
+        msg.textContent = 'Error: ' + err.message;
+        msg.className = 'error';
+      }
+    };
+  </script>
+</body>
+</html>
