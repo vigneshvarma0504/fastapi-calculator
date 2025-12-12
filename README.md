@@ -492,17 +492,3 @@ After those are set, the workflow will log in and push the built image to Docker
 ### Docker Hub repository used in CI
 
 CI is configured to push to `vigneshvarma05/fastapi-calculator` when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set in GitHub Actions secrets.
-
-## Troubleshooting CI Docker push errors
-
-- If you see `push access denied` or `insufficient_scope` errors, confirm:
-  - The Docker Hub repository exists under the username provided.
-  - The `DOCKERHUB_TOKEN` is a valid access token with write/push scope.
-
-## Next steps (optional)
-
-- Add BREAD endpoints for `Calculation` (Module 12).
-- Link calculations to users via `user_id` foreign key (if desired).
-- Improve CI caching for Docker build to speed up builds.
-
-If you want me to implement any of those next steps, tell me which one and I will proceed.
