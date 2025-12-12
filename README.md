@@ -44,23 +44,23 @@ All calculation endpoints require JWT authentication via `Authorization: Bearer 
 ### Local Setup (Development)
 
 1. **Clone the repository** and navigate to the project directory:
-```powershell
+```bash
 cd fastapi-calculator-main
 ```
 
-2. **Create a virtual environment**:
-```powershell
+2. **Create a virtual environment** (bash/zsh):
+```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate
 ```
 
 3. **Install dependencies**:
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
 4. **Run the application** (uses SQLite locally by default):
-```powershell
+```bash
 uvicorn app.main:app --reload
 ```
 
@@ -184,36 +184,41 @@ curl -X DELETE "http://127.0.0.1:8000/calculations/1" \
 
 ## Running Tests
 
-### Run All Tests with Coverage
-```powershell
-pytest --cov=app --cov-report=term-missing
+### Fast suite with coverage (skips Playwright E2E)
+```bash
+coverage run -m pytest --ignore=tests/e2e/test_calculator_bread.py --ignore=tests/e2e/test_profile_flow.py
+coverage report -m
 ```
 
-### Run Only Unit Tests
-```powershell
-pytest tests/ -q
+### Full suite (includes Playwright E2E)
+Install browsers once if you have not already:
+```bash
+playwright install --with-deps
+```
+Then run everything:
+```bash
+pytest
 ```
 
-### Run Only Integration Tests
-```powershell
-pytest tests/integration/ -q
-```
-
-### Run Integration Tests with PostgreSQL
-Set the database URL before running tests:
-```powershell
-$env:TEST_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/calculator_db"
+### Integration tests against PostgreSQL
+Set the test database URL before running:
+```bash
+export TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/calculator_db"
 pytest tests/integration/ -v
 ```
 
-### Test Coverage Report
-After running tests with coverage:
-```powershell
-pytest --cov=app --cov-report=html
+### HTML coverage report
+```bash
+coverage html
 ```
-This generates an HTML report in `htmlcov/index.html`
+Opens at `htmlcov/index.html`.
 
 ## Docker & Docker Compose
+
+### Prebuilt image (Docker Hub)
+- Repo: https://hub.docker.com/repository/docker/vigneshvarma05/fastapi-calculator/general
+- Pull: `docker pull vigneshvarma05/fastapi-calculator:latest`
+- Run: `docker run -p 8000:8000 vigneshvarma05/fastapi-calculator:latest`
 
 ### Build the Docker Image
 ```bash
@@ -388,15 +393,15 @@ MIT License – See LICENSE file for details
 
 1. Create and activate a Python virtual environment (recommended).
 
-```powershell
+```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 2. Start the app (uses the default SQLite DB for local dev):
 
-```powershell
+```bash
 uvicorn app.main:app --reload
 ```
 
@@ -416,15 +421,16 @@ Authorization: Bearer <access_token>
 
 ## Run tests locally
 
-Run all tests with coverage:
+Run the fast suite with coverage (skips the long Playwright E2E cases):
 
-```powershell
-pytest --cov=app --cov-report=term-missing
+```bash
+coverage run -m pytest --ignore=tests/e2e/test_calculator_bread.py --ignore=tests/e2e/test_profile_flow.py
+coverage report -m
 ```
 
 Run just the calculation tests:
 
-```powershell
+```bash
 pytest tests/test_calculations.py tests/integration/test_calculations_integration.py -q
 ```
 
@@ -434,7 +440,7 @@ Integration tests use `TEST_DATABASE_URL` if provided; otherwise a local SQLite 
 
 Integration tests hit the running FastAPI app using `TestClient`. To run only integration tests:
 
-```powershell
+```bash
 pytest tests/integration -q
 ```
 
@@ -483,11 +489,9 @@ Workflow: `.github/workflows/ci.yml`
 
 After those are set, the workflow will log in and push the built image to Docker Hub.
 
-### Docker Hub placeholder
+### Docker Hub repository used in CI
 
-This repository's CI is configured to push an image to Docker Hub when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set in GitHub Actions secrets. Replace the placeholder below with your actual Docker Hub repo when you enable CI pushes:
-
-`DOCKER_HUB_REPO = your-dockerhub-username/fastapi-calculator`
+CI is configured to push to `vigneshvarma05/fastapi-calculator` when `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` are set in GitHub Actions secrets.
 
 ## Troubleshooting CI Docker push errors
 
