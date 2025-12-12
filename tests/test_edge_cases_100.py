@@ -1,17 +1,44 @@
 """Edge case tests to reach 100% coverage."""
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from app.main import app
-from app.database import SessionLocal
+from app.database import SessionLocal, Base, get_db
 from app import models
 from unittest.mock import patch
+
+# Isolated sqlite DB for this module
+TEST_DATABASE_URL = "sqlite:///./test_edge_cases.db"
+engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(bind=engine)
+
 
 client = TestClient(app)
 
 
 def cleanup_user(username: str):
     """Helper to clean up test users."""
-    db = SessionLocal()
+    db = TestingSessionLocal()
     try:
         user = db.query(models.User).filter(models.User.username == username).first()
         if user:

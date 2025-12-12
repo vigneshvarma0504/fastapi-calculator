@@ -47,6 +47,7 @@
     <div id="message"></div>
   </form>
   <p class="link">Don't have an account? <a href="register.html">Register here</a></p>
+  <p class="link">Already logged in? <a href="profile.html">Go to Profile</a></p>
   <script>
     const form = document.getElementById('loginForm');
     const msg = document.getElementById('message');
@@ -73,11 +74,17 @@
         });
         if (res.status === 200) {
           const data = await res.json();
-          msg.textContent = '✓ Login successful! Redirecting to calculator...';
+          msg.textContent = '✓ Login successful! Redirecting to profile...';
           msg.className = 'success';
+          // Store tokens using consistent keys used across the app
+          localStorage.setItem('access_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('refresh_token', data.refresh_token);
+          }
+          // Keep backward compatibility
           localStorage.setItem('jwt', data.access_token);
           setTimeout(() => {
-            window.location.href = 'calculator.html';
+            window.location.href = 'profile.html';
           }, 500);
         } else {
           const data = await res.json();

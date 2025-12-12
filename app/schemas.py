@@ -97,3 +97,21 @@ class UserWithTokenCount(BaseModel):
 class RoleUpdate(BaseModel):
     role: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for updating user profile information"""
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+
+
+class PasswordChangeRequest(BaseModel):
+    """Schema for changing user password"""
+    current_password: str = Field(..., min_length=6, max_length=100)
+    new_password: str = Field(..., min_length=6, max_length=100)
+
+    @model_validator(mode="after")
+    def passwords_different(self):
+        if self.current_password == self.new_password:
+            raise ValueError("New password must be different from current password")
+        return self

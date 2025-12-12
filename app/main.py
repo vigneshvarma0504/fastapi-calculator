@@ -169,6 +169,94 @@ def create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
+# ------------------- User Profile Management -------------------
+
+
+@app.get("/users/me", response_model=schemas.UserRead)
+def get_current_user_info(
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Get current user's profile information.
+    """
+    logger.info(f"User id={current_user.id} retrieved their profile")
+    return current_user
+
+
+@app.patch("/users/me", response_model=schemas.UserRead)
+def update_user_profile(
+    profile_update: schemas.UserProfileUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update current user's profile (username and/or email).
+    """
+    # Check if username is taken by another user
+    if profile_update.username:
+        existing = (
+            db.query(models.User)
+            .filter(
+                models.User.username == profile_update.username,
+                models.User.id != current_user.id,
+            )
+            .first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken",
+            )
+        current_user.username = profile_update.username
+
+    # Check if email is taken by another user
+    if profile_update.email:
+        existing = (
+            db.query(models.User)
+            .filter(
+                models.User.email == profile_update.email,
+                models.User.id != current_user.id,
+            )
+            .first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already taken",
+            )
+        current_user.email = profile_update.email
+
+    db.commit()
+    db.refresh(current_user)
+    logger.info(f"User id={current_user.id} updated their profile")
+    return current_user
+
+
+@app.post("/users/me/change-password", status_code=status.HTTP_200_OK)
+def change_password(
+    password_change: schemas.PasswordChangeRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Change current user's password.
+    """
+    # Verify current password
+    if not verify_password(password_change.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    # Hash and update new password
+    current_user.password_hash = hash_password(password_change.new_password)
+    db.commit()
+    logger.info(f"User id={current_user.id} changed their password")
+    return {"message": "Password changed successfully"}
+
+
+# ------------------- User Registration -------------------
+
 
 @app.post(
     "/users/register",

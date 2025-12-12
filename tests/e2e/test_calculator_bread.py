@@ -13,8 +13,10 @@ import time
 
 
 @pytest.fixture(scope="module")
-def base_url():
-    """Base URL for the frontend application."""
+def app_base_url():
+    """Base URL for the frontend application.
+    Renamed to avoid conflict with pytest-base-url plugin's fixture scope.
+    """
     return "http://localhost:8081"
 
 
@@ -25,7 +27,7 @@ def api_base():
 
 
 @pytest.fixture(scope="function")
-def authenticated_page(page: Page, base_url: str):
+def authenticated_page(page: Page, app_base_url: str):
     """Fixture that provides an authenticated page session."""
     # Register a test user
     test_user = {
@@ -35,7 +37,7 @@ def authenticated_page(page: Page, base_url: str):
     }
     
     # Navigate to register page
-    page.goto(f"{base_url}/register.html")
+    page.goto(f"{app_base_url}/register.html")
     page.fill("#username", test_user["username"])
     page.fill("#email", test_user["email"])
     page.fill("#password", test_user["password"])
@@ -45,13 +47,13 @@ def authenticated_page(page: Page, base_url: str):
     page.wait_for_selector(".success", timeout=5000)
     
     # Navigate to login page
-    page.goto(f"{base_url}/login.html")
+    page.goto(f"{app_base_url}/login.html")
     page.fill("#email", test_user["email"])
     page.fill("#password", test_user["password"])
     page.click("button[type='submit']")
     
     # Wait for redirect to calculator page
-    page.wait_for_url(f"{base_url}/calculator.html", timeout=5000)
+    page.wait_for_url(f"{app_base_url}/calculator.html", timeout=5000)
     
     return page
 

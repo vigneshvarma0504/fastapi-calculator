@@ -6,9 +6,35 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.database import get_db, SessionLocal
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import get_db, Base
 from app import models
 from app.operations import compute_result
+
+
+# Dedicated sqlite DB for this module to avoid cross-test contamination
+TEST_DATABASE_URL = "sqlite:///./test_final_coverage.db"
+engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@pytest.fixture(autouse=True)
+def setup_db_override():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(bind=engine)
 
 
 client = TestClient(app)
@@ -16,7 +42,7 @@ client = TestClient(app)
 
 def cleanup_user(username: str):
     """Helper to clean up test users."""
-    db = SessionLocal()
+    db = TestingSessionLocal()
     try:
         user = db.query(models.User).filter(models.User.username == username).first()
         if user:

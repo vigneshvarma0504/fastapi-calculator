@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - FastAPI Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .profile-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            margin-top: 20px;
+        }
+
+        .logout-btn:hover {
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .hint {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-container">
+        <h1>👤 My Profile</h1>
+        <p class="subtitle">Update your account information</p>
+
+        <!-- Edit Profile Section -->
+        <div class="section">
+            <h2>📝 Account Information</h2>
+            <div id="profileMessage" class="message"></div>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label for="newEmail">Email Address</label>
+                    <input type="email" id="newEmail" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="currentRole">Role (View Only)</label>
+                    <input type="text" id="currentRole" value="Loading..." disabled style="background-color: #f5f5f5; cursor: not-allowed;">
+                </div>
+                <button type="submit">💾 Save Changes</button>
+            </form>
+        </div>
+
+        <!-- Change Password Section -->
+        <div class="section">
+            <h2>🔒 Change Password</h2>
+            <div id="passwordMessage" class="message"></div>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" required placeholder="Enter your current password">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" required placeholder="Enter your new password">
+                    <p class="hint">At least 6 characters</p>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" required placeholder="Confirm your new password">
+                </div>
+                <button type="submit">🔐 Update Password</button>
+            </form>
+        </div>
+
+        <!-- Navigation Links -->
+        <div class="nav-links">
+            <a href="calculator.html">📊 Calculator</a>
+            <a href="#" class="logout-btn" onclick="logout()">🚪 Logout</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // Load current user info on page load
+        async function loadUserInfo() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    // Token expired, try to refresh
+                    const refreshed = await refreshToken();
+                    if (refreshed) {
+                        loadUserInfo();
+                        return;
+                    } else {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load user info');
+                }
+
+                const user = await response.json();
+                
+                // Populate the editable fields with current values
+                document.getElementById('newUsername').value = user.username;
+                document.getElementById('newEmail').value = user.email;
+                document.getElementById('currentRole').value = user.role;
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                showMessage('profileMessage', 'Failed to load user information', 'error');
+            }
+        }
+
+        // Update profile
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newUsername = document.getElementById('newUsername').value.trim();
+            const newEmail = document.getElementById('newEmail').value.trim();
+
+            if (!newUsername || !newEmail) {
+                showMessage('profileMessage', 'Please provide both username and email', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            const payload = { username: newUsername, email: newEmail };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 401) {
+                    const refreshed = await refreshToken();
+                    if (refreshed) {
+                        document.getElementById('profileForm').dispatchEvent(new Event('submit'));
+                        return;
+                    } else {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('profileMessage', '✅ Profile updated successfully!', 'success');
+                    loadUserInfo(); // Reload user info to update both sections
+                } else {
+                    showMessage('profileMessage', data.detail || 'Failed to update profile', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showMessage('profileMessage', 'An error occurred while updating profile', 'error');
+            }
+        });
+
+        // Change password
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showMessage('passwordMessage', 'New passwords do not match', 'error');
+                return;
+            }
+
+            if (currentPassword === newPassword) {
+                showMessage('passwordMessage', 'New password must be different from current password', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                if (response.status === 401) {
+                    const refreshed = await refreshToken();
+                    if (refreshed) {
+                        document.getElementById('passwordForm').dispatchEvent(new Event('submit'));
+                        return;
+                    } else {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                }
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('passwordMessage', 'Password changed successfully!', 'success');
+                    document.getElementById('passwordForm').reset();
+                } else {
+                    showMessage('passwordMessage', data.detail || 'Failed to change password', 'error');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showMessage('passwordMessage', 'An error occurred while changing password', 'error');
+            }
+        });
+
+        // Refresh token
+        async function refreshToken() {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!refreshToken) {
+                return false;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/token/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error refreshing token:', error);
+                return false;
+            }
+        }
+
+        // Show message
+        function showMessage(elementId, message, type) {
+            const messageEl = document.getElementById(elementId);
+            messageEl.textContent = message;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = 'login.html';
+        }
+
+        // Load user info on page load
+        loadUserInfo();
+    </script>
+</body>
+</html>

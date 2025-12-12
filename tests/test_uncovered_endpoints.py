@@ -37,6 +37,14 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def apply_db_override():
+    """Ensure the overridden DB is used and reset per test."""
+    app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
+
+
 def create_test_user(username=None, email=None, role="user"):
     """Helper to create a test user."""
     if username is None:
